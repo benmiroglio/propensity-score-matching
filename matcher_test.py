@@ -42,7 +42,7 @@ def test_no_match_drop():
     for t in [0.1, 0.01, 0.001]:
         m.match(threshold=t)
         n = len(m.matched_data)
-        assert n < last_n
+        assert n <= last_n
         last_n = n
         
     
