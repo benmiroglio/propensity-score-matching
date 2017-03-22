@@ -14,10 +14,9 @@ import numpy as np
 def progress(i, n, prestr=''):
     sys.stdout.write('\r{}{}%'.format(prestr, round(i / n * 100, 2)))
     
-def is_continuous(colname, dmatrix, cutoff=.05):
+def is_continuous(colname, dmatrix):
     '''
     Check if the colname was treated as continuous in the patsy.dmatrix
-    
     Would look like colname[<factor_value>] otherwise
     '''
     return colname in dmatrix.columns
@@ -44,10 +43,7 @@ def ks_boot(tr, co, nboots=1000):
     return ks_boot_pval
     
 class Matcher:
-    '''
-    Matcher Class
-    '''
-    
+
     def __init__(self, test, control, formula=None, 
                  yvar='treatment', exclude=[], stepwise=False, transform=False):
         self.yvar = yvar   
@@ -180,48 +176,8 @@ class Matcher:
         self.matched_data = self.data.loc[result]
         self.matched_data['match_id'] = match_ids  
         
-    def forward_stepwise2(self, data, resp, k=5):
-        selected = []
-        remaining = set(data.columns)
-        for i in self.exclude:
-            try:
-                remaining.remove(i)
-            except KeyError:
-                continue
-
-        current_score, best_new_score = 0.0, 0.0
-        ret_data = []
-        regressions = 0
-        i = 1
-        while remaining and regressions < 5:
-            progress(current_score, 1, "n_models={}, Current Best: ".format(i))
-            i += 1
-            scores_with_candidates = []
-            for candidate in remaining:
-                formula = "{} ~ {}".format(resp,
-                                               ' + '.join(selected + [candidate]))
-                data_part = data[[resp] + selected + [candidate]]
-
-                y, X = patsy.dmatrices(formula, data=data_part, 
-                            return_type='dataframe')
-                train, test = self.kfold_cv(data_part, formula, k=k)
-
-                scores_with_candidates.append((test, candidate))
-                ret_data.append({'f':formula, 'train':train, 'test':test})
-            scores_with_candidates.sort()
-            best_new_score, best_candidate = scores_with_candidates.pop()
-            if best_new_score - current_score > .001:
-                remaining.remove(best_candidate)
-                selected.append(best_candidate)
-                current_score = best_new_score
-                regressions = 0
-            else:
-                regressions += 1
-                
-        formula = "{} ~ {}".format(resp,
-                                       ' + '.join(selected))
-        return formula, ret_data
-    
+    # adapted from 
+    # http://planspace.org/20150423-forward_selection_with_statsmodels/
     def forward_stepwise(self, data, resp, k=5):
         selected = []
         remaining = set(data.columns)
